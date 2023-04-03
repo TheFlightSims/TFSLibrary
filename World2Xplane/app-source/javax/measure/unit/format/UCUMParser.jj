@@ -1,0 +1,189 @@
+/*
+ * JScience - Java(TM) Tools and Libraries for the Advancement of Sciences.
+ * Copyright (C) 2008 - JScience
+ * All rights reserved.
+ * 
+ * Permission to use, copy, modify, and distribute this software is
+ * freely granted, provided that this notice is preserved.
+ */
+
+options {
+  STATIC = false;
+  DEBUG_PARSER = false;
+  DEBUG_LOOKAHEAD = false;
+  DEBUG_TOKEN_MANAGER = false;
+}
+
+PARSER_BEGIN(UCUMParser)
+
+package javax.measure.unit.ucum;
+
+/**
+ * <p> 
+ * Parser definition for parsing {@link javax.measure.unit.Unit Unit}s 
+ * according to the <a href="http://aurora.regenstrief.org/UCUM/ucum.html">
+ * Uniform Code for Units of Measure</a>.
+ * 
+ * @author <a href="mailto:eric-r@northwestern.edu">Eric Russell</a>
+ * @version 1.0
+ * @see <a href="http://aurora.regenstrief.org/UCUM/ucum.html">UCUM</a>
+ */
+class UCUMParser {
+    
+    private SymbolMap _symbols;
+
+    public UCUMParser (SymbolMap symbols, java.io.InputStream in) {
+        this(in);
+        _symbols = symbols;
+    }
+}
+
+PARSER_END(UCUMParser)
+
+//
+// Lexical entities
+//
+
+TOKEN: { <#ATOM_CHAR: ["!","#"-"'","*",",","0"-"Z","\\","^"-"z","|","~"] >
+       | <#ESCAPED_ATOM_CHAR: ["!"-"Z","\\","^"-"~"] >
+       | <#TERMINAL_ATOM_CHAR: ["!","#"-"'","*",",",":"-"Z","\\","^"-"z","|","~"] >
+       | <#LCBRACKET: "{" >
+       | <#RCBRACKET: "}" >
+       | <#LSBRACKET: "[" >
+       | <#RSBRACKET: "]" > }
+TOKEN: { <ANNOTATION: <LCBRACKET> (["!"-"z","|","~" ])* <RCBRACKET> > }
+TOKEN: { <FACTOR: (["0"-"9"])+ > }
+TOKEN: { <SIGN: ["+","-"] > }
+TOKEN: { <DOT: "."> }
+TOKEN: { <SOLIDUS: "/"> }
+TOKEN: { <ATOM: (((<ATOM_CHAR>)*
+                  (<TERMINAL_ATOM_CHAR>)+) |
+                 ((<ATOM_CHAR>)*
+                  (<LSBRACKET> (<ESCAPED_ATOM_CHAR>)+ <RSBRACKET>)
+                  ((<ATOM_CHAR>)*
+                   (<TERMINAL_ATOM_CHAR>)+)?)) > }
+
+//
+// Parser productions
+//
+
+javax.measure.unit.Unit parseUnit () :
+    {
+        javax.measure.unit.Unit u;
+    }
+{
+    u=Term() <EOF>
+    { return u; }
+}
+
+javax.measure.unit.Unit Term () :
+    { 
+        javax.measure.unit.Unit result = javax.measure.unit.Unit.ONE;
+        javax.measure.unit.Unit temp = javax.measure.unit.Unit.ONE; 
+    }
+{
+(
+    result=Component() 
+    ( 
+      (<DOT> temp=Component() { result = result.times(temp); })
+      | 
+      (<SOLIDUS> temp=Component() { result = result.divide(temp); })
+    )*
+    {
+        return result;
+    }
+)
+}
+
+javax.measure.unit.Unit Component () :
+    {
+        javax.measure.unit.Unit result = javax.measure.unit.Unit.ONE;
+        Token token = null;
+    }
+{
+(
+    LOOKAHEAD(Annotatable() <ANNOTATION>)
+    result=Annotatable() token=<ANNOTATION>
+    { 
+        return new AnnotatedUnit(result, token.image.substring(1, token.image.length()-1));
+    }
+|
+    result=Annotatable()
+    {
+        return result; 
+    }
+|
+    token=<ANNOTATION>
+    {   
+        return new AnnotatedUnit(result, token.image.substring(1, token.image.length()-1));
+    }
+|
+    token=<FACTOR>
+    { 
+        long factor = Long.parseLong(token.image);
+        return result.times(factor); 
+    }
+|
+    <SOLIDUS> result=Component()
+    {
+        return javax.measure.unit.Unit.ONE.divide(result);
+    }
+|
+    "(" result=Term() ")"
+    {
+        return result; 
+    }
+)
+}
+
+javax.measure.unit.Unit Annotatable () :
+    {
+        javax.measure.unit.Unit result = javax.measure.unit.Unit.ONE;
+        Token token1 = null;
+        Token token2 = null;
+    }
+{
+(
+    LOOKAHEAD(SimpleUnit() (<SIGN>)? <FACTOR>)
+    result=SimpleUnit() (token1=<SIGN>)? token2=<FACTOR>
+    {
+        int exponent = Integer.parseInt(token2.image);
+        if ((token1 != null) && token1.image.equals("-")) {
+            return result.pow(-exponent);
+        } else {
+            return result.pow(exponent);
+        }
+    }
+|
+    result=SimpleUnit()
+    { 
+        return result; 
+    }
+)
+}
+
+javax.measure.unit.Unit SimpleUnit () :
+    {
+        Token token = null;
+    }
+{
+(
+    token=<ATOM>
+    {
+        javax.measure.unit.Unit unit = _symbols.getUnit(token.image);
+        if (unit == null) {
+            Prefix prefix = _symbols.getPrefix(token.image);
+            if (prefix != null) {
+                String prefixSymbol = _symbols.getSymbol(prefix);
+                unit = _symbols.getUnit(token.image.substring(prefixSymbol.length()));
+                if (unit != null) {
+                    return unit.transform(prefix.getConverter());
+                } 
+            }
+            throw new ParseException();
+        } else {
+            return unit;
+        }
+    }
+)
+}

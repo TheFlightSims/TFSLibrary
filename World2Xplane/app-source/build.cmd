@@ -1,0 +1,1 @@
+javac -d "%~dp0../resources" *

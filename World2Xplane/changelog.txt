@@ -1,0 +1,247 @@
+
+v0.7.4 (04/10/2015)
+- Fixed bug with clipping to areas which was clipping to the incorrect zones in some cases
+- Improved accuracy of buffer call. The exact distance in meters will be respected
+- Fixed issue parsing heights which have a space in them
+- Permanently disabled the obstacle lights.
+- Removed rules to use default XP10 objects for industrial buildings as they were causing compatibility issues
+- Fixed rule in config-hd.xml which would hide certain powerlines
+- Removed rule which generated tracks as roads
+
+v0.7.2 (14/04/2015)
+- Minor bug fix for database library which caused local storage mode not to work
+
+v0.7.1 (01/04/2015)
+- Fixed bug with forest clipping around airports which causes a hang on certain large forests
+- Fixed resume bug introduced in 0.7.0
+- Updated the obstacle light generator to use DSF object elevations instead of custom objects
+- Fixed issue which causes some OSM 3D objects to not be visible (TV tower in Munich)
+- Removed OSM3D object generation for objects which only have a colour. This was causing huge loading times in places like Germany
+  This change will mean OSM3D buildings will look more generic and lack the defined colour in OSM, but the scenery will load much quicker and will perform better
+
+v0.7.0 (25/03/2015)
+- Reprojected UK counties regions to WGS84.
+- Fixed region bug when using smaller regions which aren't being picked up (UK and Germany regions now work)
+- Fixed bug with clipping perimeter forests and fences so that inner polygons aren't clipped and causes lines of shrubs which don't exist in OSM
+- Fixed collision detection issue where under certain cases items were never being placed
+- Fixed bug with power lines which includes mixed types of towers and poles
+- Fixed missing region code for France
+- Improved speed of collision detection on line rules when using placement tracking
+- Added beach .bch exclusions to the config file to make photoscenery look better
+- Fixed double-backing roads when creating bridges over water
+- Added best fit type rules for facades, taking height, area, etc into consideration. Added a few rules for highrise buildings and industrial
+- Reduced default number of cores to 2, as higher was causing OOM
+- Added sea nav lights from OpenSeaMap.
+- Replaced electric pylons with custom pylons which respect pole/tower position in OSM and also have a small obstacle light
+- Added "clip-to-area" for Line Rules, which if used with an area rule in the filter, will clip the line to the area,
+  (e.g) Roads inside a caravan park will be clipped to the area tagged in OSM and then caravans placed along the road
+
+v0.6.0 Beta (11/11/2014)
+- Collision Detection for Line Rules (Set "collision-test" to true)
+- Added tracking for Line Rules so placed objects can be tracked for collision detection (Warning, slow!!)
+- Fixed placement bug on line rules which placed items too sparsely
+- Fixed bug on Line Rules which ignored lines with only 2 points
+- Fixed serious bug which excluded certain tiles from being generated for larger countries
+- Added "angle-from-road" to object rules which will try and rotate an object to align with a neighbouring road, e.g. bus-stops
+- Added groups for objects in line rules using group ID. Random groups can be used to group similar buildings
+- Added width and spacing object for objects in line rules
+- Added "spacing-division" to line rules, so when using double-sided offsets with object distances
+- Fixed bug with random rule placement and the density ranges (Which was placing too many trees)
+- Fixed bug where objects lacking regions in CSV files where completely ignored and never used.
+- Added "polygon" rule, which works similar to facades, e.g. For placing beaches, gravel, grass textures
+- Added improved shrub/hedgerows to the default rule (.for inside world-models)
+- Aligned tractors on farms to the edge of the field (so tractor seems to be following a path)
+- Added "count" option to line rule to place a set "count" of objects at random along the line, e.g. Place a tractor somewhere on a farm track
+- Aligned/Rotated road signs, bus-stops, billboards, churches, windmills to the nearest road
+((For an example of the autogen options, have a look at the commented out section "autogen" in config-hd.xml)
+
+
+v0.5.1 Beta (04/07/2014)
+- IMPORTANT!!! World2XPlane now reads the csv files from world-models. You either need to set an X-Plane folder location in the GUI
+  or set the world-models-folder config option in the config file
+- Fixed parsing of outer ways on a relation where some members might have different tags
+- Fixed the usage of multi part outer ways for area trackers
+- Excluded inner areas on multi polygons when used in random rules
+- Added min-height/max-height option to rules. Objects not in the specified range will be ignored and passed on.
+  (This is easier than using the filter options, as people specify heights using various units and fields)
+- Added rule for placing a silo on some farmyards
+- Tweaked the adaptive height rule so it only effects cities. Towns looked too unrealistic, but works well in cities
+- Fixed threading issue
+- Updated clipping rules for airports to include runways, taxiways
+- Added Priority to regions, so it's possible to have US (country), and then states, and the states will take priority.
+  Ordered is determined by how they are listed in the CSV file, e.g. US;AZ will match all US buildings and Arizona, but will give Arizona
+  Priority
+- Added support for US states as a region
+
+v0.5.0 Beta (05/06/2014)
+- Added "building" option to facades (defaults to true). When false, such objects are excluded from collision detection, e.g. fences
+- Added "required-level" to all rules so that the object-density setting inside X-Plane can be set per rule
+- Set multipolygon and generated objects to always show, so they don't get broken up by X-Plane on lower density settings
+- Updated config files with required-levels, e.g. Wind Turbines have higher density settings than small houses
+- Renamed <closed> option on facades to allow-unclosed. Set this to true if the facade should also wrap an unclosed way, e.g. a Fence
+- Fixed bug when drawing unclosed lines as facades
+- Fixed bug which caused airports to be clipped incorrectly
+- Fixed stats error on Windows, where stats file where not being written
+- Added "skip-last-point" option for facades, so the default option of skipping the last point when drawing facades can be overridden (For rendering fences correctly)
+- Added piers
+- Added new industrial building set
+
+v0.4.1a Beta (11/05/2014)
+ - Fixed hung thread problem
+ - Fixed rotation problem on some buildings
+ - Excluded inner areas on multi polygons when used in random rules
+
+v0.4.0 Beta (10/05/2014)
+ - Command-line interface (See manual)
+ - New GUI front-end, with progress window more suitable for multiprocessing.
+ - Added reject-multi-polygon option to object rules to reject multi-polygon buildings
+ - Configurable processors through the GUI, will override option in config file.
+ - Added "simplify" option, with a tolerance value. Shapes will be simplified using the tolerance value in metres. Simplified most facades, forests and vectors for performance
+ - Fixed bug which caused lots of empty tiles to be processed unnecessarily
+ - Prevented a DSF file from being created when empty
+ - Added facade roof height option, so some space is allocated for the roof
+ - Added node trackers for tracking items like churches, petrol stations, etc.
+ - Added adaptive heights. These are use to set the height of an unknown object based on its distance from a tracked node
+ - Added new rule to set objects in towns, village and city centres to a specified height range. So random height placement is a bit more realistic
+ - Added option to detect which side of a building contains the road, and to use an appropriate model so the door faces the road (Slows down generation a lot)
+ - Added option to use .poly file for creating boundary exclusions. If passed in, this will be used to generate exclusion zones per 1x1 degree tile.
+   If using smart exclusions, this option will still be used to generate road exclusions.
+ - Fixed memory leak and optimised some parts of the application
+
+v0.3.1 Beta (16/04/2014)
+- Multi threading support. If set in the config file, more than one processing thread will be used. Tweak this value based on your memory and CPU
+- Fixed bug in road generation with ID allocation, which caused a crash in certain OSM areas
+- Option to set the location of temporary files "temporary-file-path"
+- Option to configure the number of items in a building exclusion per grid "buildings-per-grid"
+- Added Blacky's new building set, over 300 small buildings between 5x5 to 11x11
+- Added "buffer" option to thicken/thin ways, or turn a line into a polygon. e.g. To place a forest around a stream or pond
+- Reverted to the OSM2XP facade set by default (Some texture issues with the Simheaven set, which need to be resolved)
+- Allowed local resource objects to be rewritten with a min_height. See rules for adding flags and antennas on top of buildings
+- Increased resolution on country recognition, as regions weren't working close to the coast
+
+v0.3.0 Beta (10/04/2014)
+- Roads, Powerlines and Railways can now be generated as part of the scenery (Experimental)
+- Added network exclusions
+- Large library update with generic Western European buildings from Uwespeed, and some noise, e.g. cars, farm equipment
+- Added way trackers (e.g. To track ways such as power lines, chair lifts and place pylons)
+- Added angle-from-way to object rules (used with way trackers)
+- Added default rules for aerialways (gondolas, ski-lifts) - (Disabled until release of X-Plane 10.30)
+- Added street lights along roads (Doesn't always work correctly as we don't know the size of the road)
+- Added shape restriction option for object best fit rules. Currently on SQ for Square is used.
+- Allowed rules to be randomised using an identifiable random seed (see manual)
+- Randomised the farm rules to place hay bales or farm equipment, but never together
+- Collision detection now includes roads
+- Configuration option to cut/trim back forests/farmland if a road shares a perimeter or cuts through the middle. This will remove trees from the roads when the forest hasn't been
+  split inside OSM, or is sharing a perimeter with the road.
+- Support for man_made=cutline for splitting forests (as part of road cutting)
+- Option to cut out forests/fields from airports (Buildings need to be handled seperately).
+- Added closed option to facades, so unclosed fences and walls can be rendered if set to false. Don't use this with buildings
+- Configured memory allocation on Windows to use as much memory as possible (from the .exe file)
+- Added libraries (So items in CSV files can be grouped) and entire libraries disabled/enabled
+
+v0.2.0 Beta  (22/03/2014)
+- Support for multiple facade sets
+- Added distribution rules for facades, (i.e. Choose the percentage of items taken from one or the other facade set, e.g. To make more dark roofs appear in Germany)
+- Allowed exclusions to be switched on or off completely
+- Fixed/Optimised the algorithm for repairing self-intersecting ways. It now doesn't get upset trying to generate some of the huge mountain forests in Japan.
+- Fixed small typo in the config file which ignored certain wind farms.
+- Reworked smart exclusions to be much faster and also far more accurate. (Now enabled by default)
+- Added Simheaven's Facade set
+- Allowed random rules to fall back to placing .for files when tile is empty.
+- Moved all world-models objects into a library, so they're no longer part of the scenery
+- Indicated when the app runs out of memory, and advices what to do
+- Reduced memory usage (PACA France should now generate with 4GB)
+- Added progress bar and note in log window when generation has finished
+- Changed label for memory usage to change colours and also show percentage.
+- Modified pool allocation for DSFTool, "busy" tiles will now generate without crashing out
+- Used church best fit rules to place churches.
+- Added some more darker roofed buildings
+- Added another radio mast seen commonly in Russia
+- Fixed bug with building parts and flat roofs, where the roof was sometimes invisible (and caused rendering problems in Rostock, Germany)
+- Lightened the colours for building parts so they look less like lego bricks
+- More flicker reduction (If you still see buildings flicker (and some still do), please check why in OSM before reporting a bug)
+- Showed the location of the output file upon scenery generation completion
+- Showed max memory usage at the end of generation
+- Added debug option in config file to produce images of exclusion zones (saved into the DSF File location)
+
+v0.1.1 Beta  (12/03/2014)
+- Added Hard Limit on random objects (default 700000) per tile, as a higher value can crash DSFTool. (Use random-placement-limit to configure)
+
+v0.1.0 Beta (10/03/2014)
+- Added self-configuring Windows exe files which should assign itself the correct amount of memory and run without any editing of files
+- Forced DDS generation during building part generation and removed PNG files and debug files to save space
+- Threaded DDS generation during part generation
+- Disabled generation of parts when a simple facade can be used instead
+- Ignored routing and other relation types that aren't used, so that they don't need to be processed or checked for tags. Should reduce memory usage and increase processing speed
+- If a 3D object is all one colour, then share a texture, reducing the number of textures generated
+- Fixed normals on domed and flat roofs.
+- Lowered default density of cattle and farm equipment on fields as the value was too high and looked odd in some areas
+- Added min-area, max-area to random rules, as the huge residential zones in France were causing DSFTool to crash.
+- Limited trees inside residential areas to smaller areas. Larger areas have far less trees
+- Placed limit on random rules for farmland, larger farm areas won't receive any random objects (Corine data in France does not split farms up)
+- Disabled coordinate compression on local storage mode, as it was causing some polygons to self-intersect due to precision errors. The database files are now much bigger,
+  12GB is required to generate France, but less errors will appear during generation.
+- Support for more rare colours names added.
+- Support for specifying different densities for different areas inside random rules (using low density values on large areas can kill X-Plane and DSFTool)
+- Added default rule to place lorries/trucks into car parks in industrial areas
+- Added default rules to place monuments/landmarks
+- Added default rules for adding radio towers/obstacles
+- Large library update for buildings
+
+
+v0.0.6 Alpha 09/03/2014
+- Fixed serious bug when there are more than 32,768 object definitions shared via DSF. Tile generated local objects are now treated seperately
+
+v0.0.5 Alpha 08/03/2014
+- Added building-exclusion-range and forest-exclusion-range to configure the size of the exclusion zones.
+  Decreasing this value can seriously slow down generation, so use with caution
+- Flipped order of residential/industrial rules to prevent untagged towns from appearing as entirely industrial
+- Fixed a problem which caused Spain to fail to generate due to some very corrupt multipolygons from imported Corine data.
+- Fixed huge domed roofs on some buildings when there was no roof height given in OSM
+
+
+v0.0.4 Alpha 06/03/2014
+- Support for OSM3D tags and building relations http://wiki.openstreetmap.org/wiki/Simple_3D_Buildings. The rules are followed strictly, so please read.
+- Added tolerance option to object best-fit rules. The default is 1 metre. Increasing the tolerance will increase the number of buildings, but the buildings
+  may not match or be too big for the area they are being inserted into. A tolerance of ~1 meter works for houses, and for industrial and agriculture,
+  a higher value of 2 seems to work. Please experiment with this option if you notice too few buildings or buildings colliding into each other.
+- Updated best-fit placement to prefer objects that match the specified height.
+- Added default height for objects in best-fit with no height. This value is used to set a maximum height limit on objects with no height when using best-fit rules
+- Added configurable regions (See documentation for details)
+- Culled unused faces on OSM 3D models for performance
+- Added Linux startup scripts (for configuring memory) - Thank you Crashmax for writing and testing these.
+- Added domed and onion roofs for OSM 3D models
+- Respected the OSM rules regarding 3D building relations, i.e. If they contain a building part, the outline isn't rendered. Should prevent some flickering
+- Added compress-textures option to the config, which when enabled, will attempt to compress all textures from the local library to DDS.
+- Collision test when a building is in more than one relation, to ensure the building isn't added twice. Will reduce flickering facades
+- Library update, there are now much more regional buildings for Italy, Switzerland and Eastern Europe.
+- Added "region" option for all rules, so rules can be applied only to specific regions. Added a sample of changing the trees in Spain.
+- Allowed files to be included into the configuration file so that large sections can be separated.
+- Fixed several bugs related to the filter rules ignoring things it shouldn't have
+
+v0.0.3 Alpha
+- Fixed an X-Plane crash caused by facades with negative heights
+- Disabled (temporarily) custom facades for buildings over 400 metres, as on certain height combinations over this value, X-Plane just crashes for an unknown reason.
+  Changing the "SCALE" value in the custom facade prevents the crash, but then messes up the texture.
+- Renamed min-height, max-height in config file to min-random-height, max-random-height
+- Removed LIT textures from facades (as they aren't yet implemented)
+- Removed some rules out of the config file, e.g. Placing stop-signs and fences (as they only hurt frame-rate and aren't visible above a few feet)
+- Fixed error reported on Windows when the GUI won't open because it can't find the X-Plane folder.
+- Added restrict-height option to object rules to enforce the height limit inside the CSV
+
+v0.0.2 Alpha
+- Added "determine" option to random rules, which when specified, the angle of the outer way will be guessed. e.g. Cars in a car park can be aligned to the largest wall.
+- Made generated facades much smaller, which reduces the generated scenery size
+- Fixed the circular rule which was being too strict. Some rounded objects weren't being detected as round as the tolerance was too low.
+- Made the tank facade all white, so it tanks look more realistic
+- Updated default config to prefer hedgerows around farms rather than larger trees
+- Changed the name of building rules to facade rules, to prevent confusion with object rules
+- Fixed path bug which required OSM files to end in .osm.pbf
+- Reduced memory usage by about 30% when not using local storage
+- Fixed color code parsing to pick up base color types
+- Added better error messages, providing a link to the problematic way
+- Fixed number formatting problem on the German locale for Windows when writing facades (Caused facades to go high into the sky)
+- Fixed DSFTool path on Linux
+
+v0.0.1 Alpha
+-Initial Release

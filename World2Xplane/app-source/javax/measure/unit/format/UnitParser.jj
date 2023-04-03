@@ -1,0 +1,332 @@
+/*
+ * JScience - Java(TM) Tools and Libraries for the Advancement of Sciences.
+ * Copyright (C) 2008 - JScience
+ * All rights reserved.
+ * 
+ * Permission to use, copy, modify, and distribute this software is
+ * freely granted, provided that this notice is preserved.
+ */
+
+options {
+  STATIC = false;
+  UNICODE_INPUT = true;
+  DEBUG_PARSER = false;
+  DEBUG_LOOKAHEAD = false;
+  DEBUG_TOKEN_MANAGER = false;
+}
+
+PARSER_BEGIN(UnitParser)
+
+package javax.measure.unit.ucum;
+
+/** */
+class UnitParser {
+    
+    private static class Exponent {
+        public final int pow;
+        public final int root;
+        public Exponent (int pow, int root) {
+            this.pow = pow;
+            this.root = root;
+        }
+    }
+    
+    private SymbolMap _symbols;
+    
+    public UnitParser (SymbolMap symbols, java.io.Reader in) {
+        this(in);
+        _symbols = symbols;
+    }
+}
+
+PARSER_END(UnitParser)
+
+//
+// Lexical entities
+//
+
+TOKEN: { <#DIGIT: [ "0","1","2","3","4","5","6","7","8","9" ] >
+       | <#SUPERSCRIPT_DIGIT: [ "\u2070", "\u00B9", "\u00B2", "\u00B3", "\u2074", "\u2075", "\u2076", "\u2077", "\u2078", "\u2079" ] >
+       | <#INITIAL_CHAR: ~["\u0000"-"\u0020", "(", ")", "*", "+", "-", ".", "/", "0"-"9", ":", "^", "\u00B2", "\u00B3", "\u00B7", "\u00B9", "\u2070", "\u2074", "\u2075", "\u2076", "\u2077", "\u2078", "\u2079" ] >
+       | <#EXTENDED_CHAR: ~["\u0000"-"\u0020", "(", ")", "*", "+", "-", ".", "/", ":", "^", "\u00B2", "\u00B3", "\u00B7", "\u00B9", "\u2070", "\u2074", "\u2075", "\u2076", "\u2077", "\u2078", "\u2079" ] > }
+TOKEN: { <PLUS: "+" > }
+TOKEN: { <MINUS: "-" > }
+TOKEN: { <ASTERISK: "*" > }
+TOKEN: { <MIDDLE_DOT: "\u00B7" > }
+TOKEN: { <SOLIDUS: "/" > }
+TOKEN: { <CARET: "^" > }
+TOKEN: { <COLON: ":" > }
+TOKEN: { <OPEN_PAREN: "(" > }
+TOKEN: { <CLOSE_PAREN: ")" > }
+TOKEN: { <INTEGER: (<DIGIT>)+ > }
+TOKEN: { <SUPERSCRIPT_INTEGER: (<SUPERSCRIPT_DIGIT>)+ > }
+TOKEN: { <FLOATING_POINT: (<DIGIT>)* (".")? (<DIGIT>)+ (("e" | "E") ((<PLUS>)|(<MINUS>))? (<DIGIT>)+)? > }
+TOKEN: { <LOG: "l" "o" "g" > 
+       | <NAT_LOG: "l" "n" >
+       | <E: "e" > }
+TOKEN: { <UNIT_IDENTIFIER: <INITIAL_CHAR> (<EXTENDED_CHAR>)* > }
+
+//
+// Parser productions
+//
+
+javax.measure.unit.Unit parseUnit () :
+    {
+        javax.measure.unit.Unit result;
+    }
+{
+    result=CompoundExpr() <EOF>
+    { 
+        return result; 
+    }
+}
+
+javax.measure.unit.Unit CompoundExpr () :
+    { 
+        javax.measure.unit.Unit result = javax.measure.unit.Unit.ONE;
+        javax.measure.unit.Unit temp = javax.measure.unit.Unit.ONE; 
+    }
+{
+(
+    result=AddExpr() 
+    ( 
+      <COLON> temp=AddExpr() { result=result.compound(temp); } 
+    )*
+    { return result; }
+)
+}
+
+javax.measure.unit.Unit AddExpr () :
+    { 
+        javax.measure.unit.Unit result = javax.measure.unit.Unit.ONE;
+        Number n1 = null;
+        Token sign1 = null;
+        Number n2 = null;
+        Token sign2 = null;
+    }
+{
+(
+    ( LOOKAHEAD(NumberExpr() Sign()) n1=NumberExpr() sign1=Sign() )? 
+    result=MulExpr() 
+    ( sign2=Sign() n2=NumberExpr() )?
+    {
+        if (n1 != null) {
+            if (sign1.image.equals("-")) {
+                result = result.times(-1);
+            }
+            result = result.plus(n1.doubleValue());
+        }
+        if (n2 != null) {
+            double offset = n2.doubleValue();
+            if (sign2.image.equals("-")) {
+                offset = -offset;
+            }
+            result = result.plus(offset);
+        }
+        return result;
+    }
+)
+}
+
+javax.measure.unit.Unit MulExpr () :
+    { 
+        javax.measure.unit.Unit result = javax.measure.unit.Unit.ONE;
+        javax.measure.unit.Unit temp = javax.measure.unit.Unit.ONE;
+    }
+{
+(
+    result=ExponentExpr() 
+    ( 
+      ( (<ASTERISK> | <MIDDLE_DOT>) temp=ExponentExpr() { result=result.times(temp); } ) 
+    |
+      ( <SOLIDUS> temp=ExponentExpr() { result=result.divide(temp); } )
+    )*
+    { return result; }
+)
+}
+
+javax.measure.unit.Unit ExponentExpr () :
+    { 
+        javax.measure.unit.Unit result = javax.measure.unit.Unit.ONE;
+        javax.measure.unit.Unit temp = javax.measure.unit.Unit.ONE;
+        Exponent exponent = null;
+        Token token = null;
+    }
+{
+(
+    LOOKAHEAD((<INTEGER> | <E>) <CARET>)
+    ( ((token=<INTEGER>) | token=<E>) <CARET> result=AtomicExpr() )
+    { 
+        double base;
+        if (token.kind == INTEGER) {
+            base = Integer.parseInt(token.image);
+        } else {
+            base = StrictMath.E;
+        }
+        return result.transform(new javax.measure.converter.LogConverter(base).inverse());
+    }
+|
+    ( result=AtomicExpr() ( exponent=Exp() )? )
+    {
+        if (exponent != null) {
+            if (exponent.pow != 1) {
+                result = result.pow(exponent.pow);
+            }
+            if (exponent.root != 1) {
+                result = result.root(exponent.root);
+            }
+        }
+        return result;
+    }
+|
+    ( ( ( <LOG> (token=<INTEGER>)? ) | token=<NAT_LOG> ) <OPEN_PAREN> result=AddExpr() <CLOSE_PAREN> )
+    { 
+        double base = 10;
+        if (token != null) {
+            if (token.kind == INTEGER) {
+                base = Integer.parseInt(token.image);
+            } else if (token.kind == NAT_LOG) {
+                base = StrictMath.E;
+            }
+        }
+        return result.transform(new javax.measure.converter.LogConverter(base));
+    }
+)
+}
+
+javax.measure.unit.Unit AtomicExpr () :
+    { 
+        javax.measure.unit.Unit result = javax.measure.unit.Unit.ONE;
+        javax.measure.unit.Unit temp = javax.measure.unit.Unit.ONE;
+        Number n = null;
+        Token token = null;
+    }
+{
+(
+    ( n=NumberExpr() )
+    { 
+        if (n instanceof Integer) {
+            return result.times(n.intValue());
+        } else {
+            return result.times(n.doubleValue());
+        }
+    }
+|
+    ( token=<UNIT_IDENTIFIER> )
+    {
+        javax.measure.unit.Unit unit = _symbols.getUnit(token.image);
+        if (unit == null) {
+            Prefix prefix = _symbols.getPrefix(token.image);
+            if (prefix != null) {
+                String prefixSymbol = _symbols.getSymbol(prefix);
+                unit = _symbols.getUnit(token.image.substring(prefixSymbol.length()));
+                if (unit != null) {
+                    return unit.transform(prefix.getConverter());
+                } 
+            }
+            throw new ParseException();
+        } else {
+            return unit;
+        }
+    }
+|
+    ( <OPEN_PAREN> result=AddExpr() <CLOSE_PAREN> )
+    { 
+        return result; 
+    }
+)
+}
+
+Token Sign () :
+    { 
+        Token result = null;
+    }
+{
+( 
+    (result=<PLUS>) 
+| 
+    (result=<MINUS>) 
+)
+    { 
+        return result; 
+    }
+}
+
+Number NumberExpr () :
+    { 
+        Token token = null;
+    }
+{
+(
+    ( token=<INTEGER> )
+    { 
+        return Long.valueOf(token.image); 
+    }
+|
+    ( token=<FLOATING_POINT> )
+    { 
+        return Double.valueOf(token.image); 
+    }
+)
+}
+
+Exponent Exp () :
+    {
+        Token powSign = null;
+        Token powToken = null;
+        Token rootSign = null;
+        Token rootToken = null;
+    }
+{
+(
+    ( 
+      <CARET> 
+      ( 
+        ( (powSign=Sign())? powToken=<INTEGER> )
+        { 
+            int pow = Integer.parseInt(powToken.image);
+            if ((powSign != null) && powSign.image.equals("-")) {
+                pow = -pow;
+            }
+            return new Exponent(pow, 1);
+        }   
+      |
+        ( <OPEN_PAREN> (powSign=Sign())? powToken=<INTEGER> ( <SOLIDUS> (rootSign=Sign())? rootToken=<INTEGER> )? <CLOSE_PAREN> )
+        { 
+            pow = Integer.parseInt(powToken.image);
+            if ((powSign != null) && powSign.image.equals("-")) {
+                pow = -pow;
+            }
+            int root = 1;
+            if (rootToken != null) {
+                root = Integer.parseInt(rootToken.image);
+                if ((rootSign != null) && rootSign.image.equals("-")) {
+                    root = -root;
+                }
+            }
+            return new Exponent(pow, root);
+        }   
+      )
+    )
+|
+    ( powToken=<SUPERSCRIPT_INTEGER> )
+    {
+        int pow = 0;
+        for (int i = 0; i < powToken.image.length(); i += 1) {
+            pow *= 10;
+            switch (powToken.image.charAt(i)) {
+                case '\u00B9': pow += 1; break;
+                case '\u00B2': pow += 2; break;
+                case '\u00B3': pow += 3; break;
+                case '\u2074': pow += 4; break;
+                case '\u2075': pow += 5; break;
+                case '\u2076': pow += 6; break;
+                case '\u2077': pow += 7; break;
+                case '\u2078': pow += 8; break;
+                case '\u2079': pow += 9; break;
+            }
+        }
+        return new Exponent(pow, 1);
+    }
+)
+}
