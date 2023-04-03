@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Build-Jdk: 1.7.0_79
+Built-By: tony
+Created-By: Apache Maven
+Main-Class: com.world2xplane.World2XPlane
+Archiver-Version: Plexus Archiver
+

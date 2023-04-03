@@ -1,0 +1,11 @@
+region,area,tag,chance-min,chance-max,score
+DE,,red,0,20,1
+DE,,black,20,80,1
+BE,,red,0,20,1
+BE,,black,20,80,1
+NL,,red,0,20,1
+NL,,black,20,80,1
+FR,,red,0,20,1
+FR,,black,20,80,1
+PL,,red,0,80,1
+PL,,black,80,100,1

@@ -1,0 +1,57 @@
+/*    */ package com.sun.media.jai.mlib;
+/*    */ 
+/*    */ import com.sun.medialib.mlib.Image;
+/*    */ import com.sun.medialib.mlib.mediaLibImage;
+/*    */ import java.awt.Rectangle;
+/*    */ import java.awt.image.Raster;
+/*    */ import java.awt.image.RenderedImage;
+/*    */ import java.awt.image.WritableRaster;
+/*    */ import java.util.Map;
+/*    */ import javax.media.jai.ImageLayout;
+/*    */ import javax.media.jai.PointOpImage;
+/*    */ 
+/*    */ final class MlibAndConstOpImage extends PointOpImage {
+/*    */   int[] constants;
+/*    */   
+/*    */   public MlibAndConstOpImage(RenderedImage source, Map config, ImageLayout layout, int[] constants) {
+/* 45 */     super(source, layout, config, true);
+/* 46 */     this.constants = MlibUtils.initConstants(constants, getSampleModel().getNumBands());
+/* 49 */     permitInPlaceOperation();
+/*    */   }
+/*    */   
+/*    */   protected void computeRect(Raster[] sources, WritableRaster dest, Rectangle destRect) {
+/*    */     mediaLibImage[] srcML, dstML;
+/*    */     int i;
+/*    */     String className;
+/* 65 */     Raster source = sources[0];
+/* 66 */     int formatTag = MediaLibAccessor.findCompatibleTag(sources, dest);
+/* 69 */     MediaLibAccessor srcAccessor = new MediaLibAccessor(source, destRect, formatTag);
+/* 71 */     MediaLibAccessor dstAccessor = new MediaLibAccessor(dest, destRect, formatTag);
+/* 74 */     switch (dstAccessor.getDataType()) {
+/*    */       case 0:
+/*    */       case 1:
+/*    */       case 2:
+/*    */       case 3:
+/* 79 */         srcML = srcAccessor.getMediaLibImages();
+/* 80 */         dstML = dstAccessor.getMediaLibImages();
+/* 81 */         for (i = 0; i < dstML.length; i++) {
+/* 82 */           int[] mlconstants = dstAccessor.getIntParameters(i, this.constants);
+/* 83 */           Image.ConstAnd(dstML[i], srcML[i], mlconstants);
+/*    */         } 
+/*    */         break;
+/*    */       default:
+/* 87 */         className = getClass().getName();
+/* 88 */         throw new RuntimeException(className + JaiI18N.getString("Generic2"));
+/*    */     } 
+/* 91 */     if (dstAccessor.isDataCopy()) {
+/* 92 */       dstAccessor.clampDataArrays();
+/* 93 */       dstAccessor.copyDataToRaster();
+/*    */     } 
+/*    */   }
+/*    */ }
+
+
+/* Location:              D:\#source-code\TheFlightSims\TFSLibrary\World2Xplane\World2XPlane.jar!\com\sun\media\jai\mlib\MlibAndConstOpImage.class
+ * Java compiler version: 3 (47.0)
+ * JD-Core Version:       1.1.3
+ */
